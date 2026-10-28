@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분석 결과</title>
+<style>
+  :root { --bg:#ffffff; --fg:#1d1d1f; --muted:#6b6b70; --line:#e2e2e6; --accent:#2f6fde; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#16171a; --fg:#ececf0; --muted:#9a9aa3; --line:#2c2d33; --accent:#6c9cff; } }
+  body { margin:0; font-family: system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background:var(--bg); color:var(--fg); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 1.5rem; margin: 0 0 16px; }
+  .tabs button { border:1px solid var(--line); background:transparent; color:var(--fg); padding:6px 12px; border-radius:6px; margin:0 6px 6px 0; cursor:pointer; }
+  .tabs button.active { border-color: var(--accent); color: var(--accent); }
+  .wrap { overflow-x:auto; border:1px solid var(--line); border-radius:8px; margin-top:12px; }
+  table { border-collapse: collapse; width:100%; font-size: .9rem; }
+  th, td { border-bottom:1px solid var(--line); padding:6px 10px; text-align:left; white-space:nowrap; }
+  .src { color: var(--muted); font-size:.8rem; margin-top:6px; }
+  img { max-width:100%; margin-top:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>분석 결과</h1>
+  <div class="tabs" id="tabs"></div>
+  <img id="fig" alt="" hidden>
+  <div class="wrap"><table id="tbl"></table></div>
+  <div class="src" id="src"></div>
+</main>
+<script>
+// 표 이름과 같은 이름의 그림이 있으면 함께 보여준다 (예: waterfall ↔ fig_waterfall).
+const FIG_FOR = { trend_daily: "fig_trend", radial_by_group: "fig_radial", waterfall: "fig_waterfall" };
+async function show(name, btn) {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b === btn));
+  const r = await fetch(`/api/tables/${name}`); const d = await r.json();
+  const t = document.getElementById("tbl");
+  t.innerHTML = "<tr>" + d.columns.map(c => `<th>${c}</th>`).join("") + "</tr>" +
+    d.rows.map(row => "<tr>" + row.map(v => `<td>${v ?? ""}</td>`).join("") + "</tr>").join("");
+  document.getElementById("src").textContent = "출처: " + d.source;
+  const img = document.getElementById("fig");
+  if (FIG_FOR[name]) { img.src = `/api/figures/${FIG_FOR[name]}`; img.hidden = false; img.onerror = () => img.hidden = true; }
+  else { img.hidden = true; }
+}
+(async () => {
+  const names = await (await fetch("/api/tables")).json();
+  const tabs = document.getElementById("tabs");
+  names.forEach((n, i) => { const b = document.createElement("button"); b.textContent = n; b.onclick = () => show(n, b); tabs.appendChild(b); if (i === 0) show(n, b); });
+})();
+</script>
+</body>
+</html>
